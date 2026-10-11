@@ -2,6 +2,17 @@
 param([ValidateSet('Auto', 'Diagnose', 'PrepareProxy', 'InstallOnly')][string]$Mode = 'Auto', [string]$ProxyUrl)
 $ErrorActionPreference = 'Stop'
 if ($env:OS -ne 'Windows_NT') { throw 'This installer supports Windows only.' }
+function Test-SamePackageFile([string]$SourceFile, [string]$ExistingFile) {
+    if (-not (Test-Path -LiteralPath $ExistingFile)) { return $false }
+    if ((Get-FileHash -LiteralPath $SourceFile).Hash -eq (Get-FileHash -LiteralPath $ExistingFile).Hash) { return $true }
+    # Git checkouts and GitHub ZIP archives may use different text line endings.
+    if ([IO.Path]::GetExtension($SourceFile) -in @('.md', '.yaml', '.ps1', '.py') -or [IO.Path]::GetFileName($SourceFile) -eq 'LICENSE') {
+        $left = [IO.File]::ReadAllText($SourceFile).Replace("`r`n", "`n")
+        $right = [IO.File]::ReadAllText($ExistingFile).Replace("`r`n", "`n")
+        return $left -ceq $right
+    }
+    return $false
+}
 $source = $null
 if ($PSScriptRoot -and (Test-Path -LiteralPath (Join-Path $PSScriptRoot 'skills\codex-reconnect-fix\SKILL.md'))) {
     $source = Join-Path $PSScriptRoot 'skills\codex-reconnect-fix'
@@ -21,7 +32,7 @@ if (Test-Path -LiteralPath $destination) {
     foreach ($file in (Get-ChildItem -LiteralPath $source -File -Recurse)) {
         $relative = $file.FullName.Substring($source.Length).TrimStart('\', '/')
         $existing = Join-Path $destination $relative
-        if (-not (Test-Path -LiteralPath $existing) -or (Get-FileHash -LiteralPath $file.FullName).Hash -ne (Get-FileHash -LiteralPath $existing).Hash) {
+        if (-not (Test-SamePackageFile $file.FullName $existing)) {
             throw 'An existing Skill differs from this release. Preserve it and review/update manually; no files overwritten.'
         }
     }
