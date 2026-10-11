@@ -1,0 +1,4 @@
+interface:
+  display_name: "Codex 重连修复"
+  short_description: "诊断 Windows Codex 重连 5/5，并验证代理修复与回滚"
+  default_prompt: "使用 $codex-reconnect-fix 排查我的 Codex 重连 5/5，执行有证据支持的修复并验证。"

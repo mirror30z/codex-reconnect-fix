@@ -1,0 +1,10 @@
+.local/
+__pycache__/
+*.pyc
+*.log
+*.sqlite*
+settings.json
+managed.json
+*report*.json
+*.stderr
+*.jsonl
