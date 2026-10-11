@@ -1,4 +1,4 @@
-# Codex 总在“正在重新连接 5/5”？我把排查过程做成了一个可安装 Skill
+# Codex 正在重新连接 5/5：使用我的 Skill 排查、修复与验证
 
 作者：mirror30z · 2026-10-12
 
@@ -6,17 +6,13 @@
 
 ![我遇到的 Codex 正在重新连接 5/5 提示](../assets/reconnecting-5-of-5.png)
 
-此前我还处理过手机远程控制无法启用的问题。两个功能都可能受到本地代理影响，但它们不是同一条连接：正常模型回答使用 Responses 路径，手机远程控制使用另一条 WebSocket 路径。因此不能用“手机已经能连上”证明模型流一定稳定，也不能用一次模型回答成功代替手机连接验证。
-
-我这次先查了相关博客，再对比 GitHub Skills 和 OpenAI 仓库报告，最后把本机能验证的部分做成了 [codex-reconnect-fix](https://github.com/mirror30z/codex-reconnect-fix)。它的目标是让别人少猜端口、少试无关配置，并且知道修复究竟验证到了哪一层。
+为解决这类连接问题，我编写了 [codex-reconnect-fix](https://github.com/mirror30z/codex-reconnect-fix)。我的方法是先检测实际连接路径，再验证本地代理，为 Codex 创建可回滚的专用代理启动入口。安装后既可以一行运行，也可以直接让 Codex 使用这个 Skill。
 
 ## 5/5 表示重试，不直接表示原因
 
 同样的提示可能对应不同问题：Codex 没有采用可用代理、代理节点中断长连接、服务端临时失败、认证或访问策略拒绝、本地网关停了，或者只有某个很长的旧对话无法压缩。
 
-公开资料中，[Leonsux 的文章](https://leonsux.github.io/posts/codex-reconnecting-proxy-fix/)记录了显式配置本地代理后的改善；[ZRONG 的文章](https://blog.zengrong.net/post/fix-codex-reconnect-5-of-5-not-network/)记录的则是新会话正常、旧图像会话压缩失败。这两种处理方向不能互换。我的情况是新对话也经常出现，所以先查模型连接路径更合适。
-
-OpenAI 仓库里的 [#24045](https://github.com/openai/codex/issues/24045) 也有相近报告：会话启动时 WebSocket 重试，之后通过 HTTP/SSE 恢复。这是排查线索，并不证明每台电脑都由同一个缺陷造成。
+我的情况是新对话也经常出现，所以先查模型连接路径。如果只有一个很长的旧会话失败，而新对话正常，则需要单独检查该会话的上下文与压缩过程。
 
 ## 我电脑上实际看到了什么
 
@@ -26,17 +22,17 @@ OpenAI 仓库里的 [#24045](https://github.com/openai/codex/issues/24045) 也�
 
 但在本次测试时，直连与显式代理访问 Responses HTTP 地址都收到最终 HTTP 405；默认路径、临时启用系统代理读取，以及显式本地代理的原生 WebSocket 握手都通过了。最小模型请求也能完成。
 
-这组证据说明故障具有间歇性，**还不能给这次 5/5 写下唯一根因，也不能证明已经永久修好**。因此，我没有把另一台电脑的 aTrust 网段冲突结论套到这里，也没有在当前连接正常时更换 provider。
+这组证据说明故障具有间歇性，**还不能给这次 5/5 写下唯一根因，也不能证明已经永久修好**。我的 Skill 会保留当前诊断结果，让后续桌面测试可以对照，而不会在连接正常时随意更换 provider。
 
 ## 为什么普通网页正常还会重连
 
-浏览器和 Codex 可能采用不同代理路径；一次普通 HTTPS 请求成功，也不保证持续的响应流能完成。长连接还会受到节点、空闲超时、规则、CDN 和服务端状态影响。Windows 上还有版本相关的系统代理读取差异，OpenAI 的 [#29958](https://github.com/openai/codex/issues/29958) 记录了相关现象。
+浏览器和 Codex 可能采用不同代理路径；一次普通 HTTPS 请求成功，也不保证持续的响应流能完成。长连接还会受到节点、空闲超时、规则、CDN 和服务端状态影响。因此，我把 HTTP 可达、WebSocket 握手和模型请求完成分别测试。
 
 另一类独立问题是 Fake-IP 与企业 VPN 路由冲突。例如 DNS 返回合成地址后，Windows 最终选择了不该走的虚拟接口。这里要看实际 DNS 和 `Find-NetRoute` 的结果，不能看到 `198.18.x.x` 就判错，也不能认定换成 `198.19.x.x` 总是安全：一个 `/15` 路由可能同时覆盖两者。
 
 ## 我的 Skill 怎样减少试错
 
-我比较了 [Codex-Connectivity](https://github.com/zhenyangLab/Codex-Connectivity)、[codex-fix-reconnecting5-5](https://github.com/DAnonyvinciT/codex-fix-reconnecting5-5) 等已有方案。它们分别提供进程代理、系统代理开关对照、`.env` 刷新、HTTP-only provider 等方向。完整比较放在 [研究记录](research.md)。本项目代码独立编写。
+我把本机连接检查、代理验证、启动器准备和回滚封装进同一个 Skill，使用者可以直接得到诊断结果与下一步操作。
 
 我的处理流程是：找到真正运行的 Codex → 读取已配置的本地代理地址 → 验证监听、HTTP 与认证 WebSocket → 选择修复或继续诊断。
 
@@ -52,16 +48,16 @@ OpenAI 仓库里的 [#24045](https://github.com/openai/codex/issues/24045) 也�
 打开 Windows PowerShell：
 
 ```powershell
-irm https://raw.githubusercontent.com/mirror30z/codex-reconnect-fix/v1.0.0/install.ps1 | iex
+irm https://raw.githubusercontent.com/mirror30z/codex-reconnect-fix/v1.0.1/install.ps1 | iex
 ```
 
 命令会安装 Skill 并执行自动诊断。对“时好时坏、现在测试又正常”的情况，可以显式准备经过验证的代理启动器：
 
 ```powershell
-& ([scriptblock]::Create((irm https://raw.githubusercontent.com/mirror30z/codex-reconnect-fix/v1.0.0/install.ps1))) -Mode PrepareProxy
+& ([scriptblock]::Create((irm https://raw.githubusercontent.com/mirror30z/codex-reconnect-fix/v1.0.1/install.ps1))) -Mode PrepareProxy
 ```
 
-然后等任务结束，完全退出 Codex，再使用桌面的 **Codex - Verified Proxy**。如果无法自动识别代理，应填写代理软件实际显示的 HTTP/Mixed 端口，不照抄别人的端口。
+然后等任务结束，完全退出 Codex，再使用桌面的 **Codex - Verified Proxy**。如果无法自动识别代理，应填写代理软件实际显示的 HTTP/Mixed 端口。
 
 安装后也可以在 Codex 输入：
 

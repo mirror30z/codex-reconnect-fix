@@ -22,9 +22,9 @@ if ($PSScriptRoot -and (Test-Path -LiteralPath (Join-Path $PSScriptRoot 'skills\
     $cache = Join-Path ([IO.Path]::GetTempPath()) ('codex-reconnect-' + [guid]::NewGuid().ToString('N'))
     New-Item -ItemType Directory -Path $cache | Out-Null
     $archive = Join-Path $cache 'release.zip'
-    Invoke-WebRequest -UseBasicParsing -Uri 'https://github.com/mirror30z/codex-reconnect-fix/archive/refs/tags/v1.0.0.zip' -OutFile $archive
+    Invoke-WebRequest -UseBasicParsing -Uri 'https://github.com/mirror30z/codex-reconnect-fix/archive/refs/tags/v1.0.1.zip' -OutFile $archive
     Expand-Archive -LiteralPath $archive -DestinationPath $cache
-    $source = Join-Path $cache 'codex-reconnect-fix-1.0.0\skills\codex-reconnect-fix'
+    $source = Join-Path $cache 'codex-reconnect-fix-1.0.1\skills\codex-reconnect-fix'
 }
 $codexRoot = if ($env:CODEX_HOME) { [IO.Path]::GetFullPath($env:CODEX_HOME) } else { Join-Path $env:USERPROFILE '.codex' }
 $destination = Join-Path $codexRoot 'skills\codex-reconnect-fix'

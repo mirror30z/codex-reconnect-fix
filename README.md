@@ -6,14 +6,37 @@
 
 适合“新对话开头经常重连、中途偶尔断流、浏览器正常而 Codex 不稳定”的情况。**5/5 是重试状态，不是唯一病因。** 本项目能自动处理经验证的 Windows 本地代理连接路径问题；认证、配额、服务故障、失效的第三方网关和超长旧会话需要走对应诊断分支。
 
-作者：[mirror30z](https://github.com/mirror30z)。独立编写，非 OpenAI 官方产品。代码及原创文档采用 MIT 许可。
+作者：[mirror30z](https://github.com/mirror30z)。采用 MIT 许可。
+
+## 解决什么问题
+
+- 新开对话时反复显示 `Reconnecting 1/5` 到 `5/5`，等待后才开始回答。
+- 回答过程中断流，出现 `stream disconnected before completion`。
+- 代理客户端已运行，浏览器能访问，但 Codex 连接不稳定。
+
+## 我的修复方法
+
+**检测真实连接路径，验证可用代理，再为 Codex 创建专用启动入口。**
+
+1. 找到实际运行的 Codex 和它使用的数据目录。
+2. 读取实际配置的本地 HTTP/Mixed 代理地址，检查端口是否监听。
+3. 对比默认路径与显式代理的 HTTP、认证 WebSocket 结果。
+4. 在验证通过后生成代理快捷方式；重开 Codex，验证新对话与较长任务。
+
+启动入口为 Codex 进程树设置代理，保留原有账号、provider 和聊天目录。端口根据本机配置读取，不要求固定端口；Store 更新后重新查找最新程序路径。
+
+## 使用条件
+
+- Windows，已安装 Microsoft Store 版 Codex。
+- 代理客户端正在运行，提供本地 HTTP 或 Mixed 端口。
+- Windows PowerShell 5.1 或 PowerShell 7；Codex 支持 `doctor --json`。
 
 ## 一行安装并执行
 
 在 **Windows PowerShell** 中运行，无需管理员权限：
 
 ```powershell
-irm https://raw.githubusercontent.com/mirror30z/codex-reconnect-fix/v1.0.0/install.ps1 | iex
+irm https://raw.githubusercontent.com/mirror30z/codex-reconnect-fix/v1.0.1/install.ps1 | iex
 ```
 
 这条命令安装 Skill 并执行 `Auto`：
@@ -25,7 +48,7 @@ irm https://raw.githubusercontent.com/mirror30z/codex-reconnect-fix/v1.0.0/insta
 对于本项目案例这样的**间歇性问题**，希望先准备一个经过验证的代理启动入口，可以一行运行：
 
 ```powershell
-& ([scriptblock]::Create((irm https://raw.githubusercontent.com/mirror30z/codex-reconnect-fix/v1.0.0/install.ps1))) -Mode PrepareProxy
+& ([scriptblock]::Create((irm https://raw.githubusercontent.com/mirror30z/codex-reconnect-fix/v1.0.1/install.ps1))) -Mode PrepareProxy
 ```
 
 它从当前代理环境或已启用的 Windows 系统代理读取地址。若无法识别，可加 `-ProxyUrl http://127.0.0.1:<你的HTTP或Mixed端口>`。不会把 7890、7897 或本案例端口当作通用默认值；不会把 SOCKS 端口或管理面板端口当作可用 HTTP 代理。
@@ -41,8 +64,6 @@ irm https://raw.githubusercontent.com/mirror30z/codex-reconnect-fix/v1.0.0/insta
 ```
 
 也可以让 Codex 从本仓库安装 `skills/codex-reconnect-fix`。本地安装默认路径是 `$CODEX_HOME/skills/codex-reconnect-fix`，未设置 `CODEX_HOME` 时使用 `~/.codex/skills/codex-reconnect-fix`。重复安装不会覆盖已被你修改的文件。
-
-发布到 GitHub 有助于公开搜索，但不意味着所有人的 Codex 会自动推荐它。安装并发现此 Skill 后，Codex 可以根据描述选择使用；明确输入 `$codex-reconnect-fix` 最直接。
 
 ## 检查与验证
 
@@ -82,12 +103,11 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$env:USERPROFILE\.codex
 - 回滚校验管理文件哈希和快捷方式归属，发现改动就保留文件供检查；不递归删除目录。
 - JSON 报告包含本机程序/主目录路径，分享前请审阅。可选日志输出只含错误标记与时间，不含对话、令牌、完整日志或线程 ID。
 
-本项目没有跨平台自动修复承诺。“更通用”指诊断分支更完整、端口和版本不硬编码、故障不强行归因，而不是用同一配置处理所有网络环境。
+自动修复面向已验证的本地代理路径问题。其他操作系统、账号限制、服务故障或单个超长会话，应根据诊断结果分别处理。
 
 ## 实测与资料
 
 - [我的排查文章：从 5/5 提示到可验证的修复](docs/article.md)
-- [博客、GitHub Skill 和官方证据对比](docs/research.md)
 - [本机测试记录与尚待验证项](docs/local-validation.md)
 - [Skill 诊断决策表](skills/codex-reconnect-fix/references/decision-guide.md)
 - 相关手机远程控制问题：[codex-remote-control-troubleshooter](https://github.com/mirror30z/codex-remote-control-troubleshooter)

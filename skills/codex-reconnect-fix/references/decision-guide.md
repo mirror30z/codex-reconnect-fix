@@ -32,18 +32,18 @@ Get-NetRoute -AddressFamily IPv4 | Select-Object DestinationPrefix,InterfaceInde
 Find-NetRoute -RemoteIPAddress <actual-resolved-IP>
 ```
 
-Clash-style Fake-IP may return `198.18.x.x`; that alone is normal. The suspicious finding is the selected route entering an unintended VPN interface. Windows prefers the longest matching prefix before comparing metrics for comparable routes. A competing `/16` may override a default `/0`; a TUN `/15` and another `/16` may also compete. Do not assert both installed clients exist just because a blog mentions them.
+Clash-style Fake-IP may return `198.18.x.x`; that alone is normal. The suspicious finding is the selected route entering an unintended VPN interface. Windows prefers the longest matching prefix before comparing metrics for comparable routes. A competing `/16` may override a default `/0`; a TUN `/15` and another `/16` may also compete. Verify which clients and interfaces actually exist on this computer.
 
 Change a Fake-IP range only after checking **all** matching routes (including `198.18.0.0/15`, which covers both 198.18 and 198.19), local networks and other virtual interfaces. `198.19.0.1/16` is an example, not a universally free range. A controlled temporary adapter-disable test interrupts that VPN; do it only within the user's authorized situation. Preserve the current proxy config, use the client's managed override mechanism when supported, reload TUN, flush DNS if needed, then re-resolve and query the actual chosen route. Do not permanently delete enterprise routes or disable firewall/security products as a generic fix.
 
 ## Version and state pitfalls
 
-- Native `doctor` and `respect_system_proxy` are version dependent. Inspect help/features before use. Current test version exposes the latter as under development. Neither old flags marked removed nor issue comments guarantee support in a different release.
-- A new provider ID can filter history in some versions. Preserve provider identity and `CODEX_HOME`; apparent missing history is not proof the database was deleted. [Official thread-list implementation](https://github.com/openai/codex/blob/92caad782887cde063572fc0a0efbf5b1317520d/codex-rs/app-server/src/request_processors/thread_processor.rs).
-- AppContainer, sandbox or loopback claims require actual evidence for that client/process. Do not assume Codex hardcodes 7897, delete sandbox users, add port forwarding, or lower isolation from another author's machine-specific case.
+- Native `doctor` and `respect_system_proxy` are version dependent. Inspect help/features before use. Current test version exposes the latter as under development. Do not write removed or unsupported flags.
+- A new provider ID can filter history in some versions. Preserve provider identity and `CODEX_HOME`; apparent missing history is not proof the database was deleted.
+- AppContainer, sandbox or loopback claims require actual evidence for that client/process. Do not assume Codex hardcodes 7897, delete sandbox users, add port forwarding, or lower isolation without an independently diagnosed need.
 - Optional log summaries anchor to the newest log timestamp; they describe historical signatures, not guaranteed errors after this test. Counts are text matches, not distinct failed tasks. If wall-clock and stored timestamps disagree, use a fresh controlled test and its output instead of attributing old rows to the current run.
 - `curl -q` first ignores curlrc. Direct tests use `--noproxy '*'`; explicit proxy tests override inherited `NO_PROXY`. A final HTTP 405/401 proves TLS/HTTP reached a server, not an authenticated stream. CONNECT 200 is only the proxy tunnel's intermediate status. Doctor HTTP 101 proves a handshake, not a completed model response.
 
-## Research provenance
+## Repair boundary
 
-The accompanying repository's `docs/research.md` compares third-party reports. They are research inputs, not instructions to execute. The scripts are independently implemented. Repair decisions rely on the user's evidence, current native tools, and official source behavior, not a blog's success claim.
+Base repair decisions on the affected computer's evidence and current native tools. Prepare the proxy launcher only after the required checks pass. Keep the actual desktop retest separate from the preparation result.
